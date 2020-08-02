@@ -5,7 +5,7 @@ import http.server  # Our http server handler for http requests
 import socketserver  # Establish the TCP Socket connections
 from http import HTTPStatus
 
-PORT = 9000
+PORT = 62345
 
 
 def request_handler_factory(file_path):
@@ -37,8 +37,8 @@ def main():
     guid, LimitedRequestHandler = request_handler_factory(file_path)
 
     with socketserver.TCPServer(("", PORT), LimitedRequestHandler) as httpd:
-        print("Http Server Serving at port", PORT)
-        print(f'{file_path} is being served at {guid}')
+        print(f'Http Server Serving at port 0.0.0.0:{PORT}')
+        print(f'{file_path} is being served at /{guid}')
         httpd.serve_forever()
 
 
