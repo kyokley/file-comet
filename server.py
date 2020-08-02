@@ -36,10 +36,13 @@ def main():
 
     guid, LimitedRequestHandler = request_handler_factory(file_path)
 
-    with socketserver.TCPServer(("", PORT), LimitedRequestHandler) as httpd:
-        print(f'Http Server Serving at port 0.0.0.0:{PORT}')
-        print(f'{file_path} is being served at /{guid}')
-        httpd.serve_forever()
+    try:
+        with socketserver.TCPServer(("", PORT), LimitedRequestHandler) as httpd:
+            print(f'Http Server Serving at port 0.0.0.0:{PORT}')
+            print(f'{file_path} is being served at /{guid}')
+            httpd.serve_forever()
+    except KeyboardInterrupt:
+        print('Shutting down')
 
 
 if __name__ == '__main__':
