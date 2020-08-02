@@ -25,7 +25,10 @@ def request_handler_factory(file_path):
     return guid, LimitedRequestHandler
 
 
-def main(filename):
+def main():
+    if len(sys.argv) != 2:
+        raise Exception('Incorrect number of arguments')
+    filename = sys.argv[1]
     file_path = Path(filename)
 
     if not file_path.exists():
@@ -40,7 +43,4 @@ def main(filename):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        raise Exception('Incorrect number of arguments')
-    filename = sys.argv[1]
-    main(filename)
+    main()
