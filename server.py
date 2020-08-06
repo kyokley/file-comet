@@ -1,3 +1,4 @@
+import os
 import cgi
 import io
 import sys
@@ -10,22 +11,10 @@ from http import HTTPStatus
 
 PORT = 62346
 
-FORM_HTML = b"""
-<html>
-    <body>
-        <form enctype="multipart/form-data" action="" method="post">
-            <label for="fileselector">Select a file:</label>
-            <input type="file" id="fileselector" name="fileselector" />
-            <input type="submit" id="submit" name="submit" value="Submit" />
-        </form>
-    </body>
-</html>
-"""
-
-SUCCESS_FORM_HTML = b"""
+BASIC_FORM_HTML = """
 <html>
     <head>
-        File received successfully
+    {}
     </head>
     <body>
         <form enctype="multipart/form-data" action="" method="post">
@@ -36,6 +25,17 @@ SUCCESS_FORM_HTML = b"""
     </body>
 </html>
 """
+
+FORM_HTML = BASIC_FORM_HTML.format('')
+
+SUCCESS_FORM_HTML = BASIC_FORM_HTML.format("""
+        File received successfully.
+""")
+
+FAIL_FORM_HTML = BASIC_FORM_HTML.format("""
+        File failed {}
+""")
+
 
 def send_file_request_handler_factory(file_path):
     guid = uuid.uuid4()
@@ -70,7 +70,7 @@ def receive_file_request_handler_factory(file_path):
                 return None
 
         def do_POST(self):
-            if self.path.lower().strip('/') == str(guid):
+            if self.path.lower().strip('/') != str(guid):
                 self.send_error(HTTPStatus.NOT_FOUND, 'File not found')
                 return None
 
@@ -93,27 +93,34 @@ def receive_file_request_handler_factory(file_path):
                 self.send_error(HTTPStatus.BAD_REQUEST,
                                 'Improperly formed request')
 
-            if file_path.is_dir():
+            new_file_path = file_path / filename
+
+            if new_file_path.exists():
+                self.send_response(HTTPStatus.OK)
+                message = FAIL_FORM_HTML.format('File already exists').encode()
+            else:
                 with open(file_path / filename, 'wb') as f:
                     f.write(selector_data)
-            else:
-                with open(file_path, 'wb') as f:
-                    f.write(selector_data)
 
-            print(f'Received {filename}')
-            self.send_response(HTTPStatus.CREATED)
+                print(f'Received {filename}')
+                self.send_response(HTTPStatus.CREATED)
+                message = SUCCESS_FORM_HTML.encode()
+
+            self.send_header("Content-type", 'text/html')
+            self.send_header("Content-Length", str(len(message)))
             self.end_headers()
-            self.wfile.write(SUCCESS_FORM_HTML)
+
+            self.wfile.write(message)
             self.wfile.flush()
 
         def send_head(self):
             f = io.BytesIO()
-            f.write(FORM_HTML)
+            f.write(FORM_HTML.encode())
             f.seek(0)
 
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-type", 'text/html')
-            self.send_header("Content-Length", str(len(FORM_HTML)))
+            self.send_header("Content-Length", str(len(FORM_HTML.encode())))
             self.end_headers()
 
             return f
@@ -131,7 +138,10 @@ def main():
     else:
         file_path = Path('.')
 
-    if not file_path.exists() or file_path.is_dir():
+    if not file_path.exists():
+        os.makedirs(file_path)
+
+    if file_path.is_dir():
         print(f'Open {file_path} for receiving')
         guid, LimitedRequestHandler = receive_file_request_handler_factory(
             file_path)
